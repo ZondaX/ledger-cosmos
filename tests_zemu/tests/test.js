@@ -12,10 +12,12 @@ const sim_options = {
     logging: true,
     start_delay: 4000,
     custom: `-s "${APP_SEED}"`
-    , X11: true
+   // , X11: true
 };
 
 jest.setTimeout(30000)
+
+const example_tx_falsepositive = {"account_number":"53479","chain_id":"cosmoshub-4","fee":{"amount":[{"amount":"12807","denom":"uatom"}],"gas":"512272"},"memo":"Ledger Live","msgs":[{"type":"cosmos-sdk/MsgUndelegate","value":{"amount":{"amount":"107694","denom":"uatom"},"delegator_address":"cosmos14q7965clxk5vfuw232p3qdk8x5cg6mfhxd9yxe","validator_address":"cosmosvaloper1qdxmyqkvt8jsxpn5pp45a38ngs36mn2604cqk9"}}],"sequence":"16"};
 
 const example_tx_str_basic = {
     "account_number": "108",
@@ -334,7 +336,7 @@ describe('Basic checks', function () {
             const app = new CosmosApp(sim.getTransport());
 
             const path = [44, 118, 0, 0, 0];
-            let tx = JSON.stringify(example_tx_str_basic);
+            let tx = JSON.stringify(example_tx_falsepositive);
 
             // get address / publickey
             const respPk = await app.getAddressAndPubKey(path, "cosmos");
@@ -349,7 +351,7 @@ describe('Basic checks', function () {
 
             // Reference window
             await sim.snapshot(`${snapshotPrefixTmp}${snapshotCount++}.png`);
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 12; i++) {
                 await sim.clickRight(Resolve(`${snapshotPrefixTmp}${snapshotCount++}.png`));
             }
             await sim.clickBoth();
