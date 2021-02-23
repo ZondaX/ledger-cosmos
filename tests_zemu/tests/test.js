@@ -15,9 +15,12 @@ const sim_options = {
    // , X11: true
 };
 
-jest.setTimeout(30000)
+jest.setTimeout(40000)
 
 const example_tx_falsepositive = {"account_number":"53479","chain_id":"cosmoshub-4","fee":{"amount":[{"amount":"12807","denom":"uatom"}],"gas":"512272"},"memo":"Ledger Live","msgs":[{"type":"cosmos-sdk/MsgUndelegate","value":{"amount":{"amount":"107694","denom":"uatom"},"delegator_address":"cosmos14q7965clxk5vfuw232p3qdk8x5cg6mfhxd9yxe","validator_address":"cosmosvaloper1qdxmyqkvt8jsxpn5pp45a38ngs36mn2604cqk9"}}],"sequence":"16"};
+
+const example_tx_wrongjson = '{"account_number":"6571","chain_id":"cos","fee":"10","memo":"Det","msgs":[{0","m"}"s":"":"cosaccount_number":"6571","chain_id":"cos","memo":"Det","msgs":[{0","m"}l"s"hain_id":"cos","fee":{"ay":[{"amount":"50kkkkkk0"}]10"},"msgs":[{}"a":"":"cosaccount_number":"6571","msgs":["fee":{"ay":[{"amount":"0","uenom":"uatom"}]10"},"memo":"Det"]],],"scorml"],"sequence":"1"}';
+
 
 const example_tx_str_basic = {
     "account_number": "108",
@@ -325,7 +328,62 @@ describe('Basic checks', function () {
         }
     });
 
-    it('sign basic', async function () {
+    it('sign basic wrong json', async function () {
+        const snapshotPrefixGolden = "snapshots/sign-basic-wrongjson/";
+        const snapshotPrefixTmp = "snapshots-tmp/sign-basic-wrongjson/";
+        let snapshotCount = 0;
+
+        const sim = new Zemu(APP_PATH);
+        try {
+            await sim.start(sim_options);
+            const app = new CosmosApp(sim.getTransport());
+
+            const path = [44, 118, 0, 0, 0];
+
+            // get address / publickey
+            const respPk = await app.getAddressAndPubKey(path, "cosmos");
+            expect(respPk.return_code).toEqual(0x9000);
+            expect(respPk.error_message).toEqual("No errors");
+            console.log(respPk)
+
+            // do not wait here..
+            const signatureRequest = app.sign(path, example_tx_wrongjson);
+
+            await Zemu.sleep(2000);
+
+            // Reference window
+            await sim.snapshot(`${snapshotPrefixTmp}${snapshotCount++}.png`);
+            for (let i = 0; i < 31; i++) {
+                await sim.clickRight(Resolve(`${snapshotPrefixTmp}${snapshotCount++}.png`));
+            }
+            await sim.clickBoth();
+
+            let resp = await signatureRequest;
+            console.log(resp);
+
+            compareSnapshots(snapshotPrefixTmp, snapshotPrefixGolden, snapshotCount);
+
+            expect(resp.return_code).toEqual(0x9000);
+            expect(resp.error_message).toEqual("No errors");
+
+            // Now verify the signature
+            const hash = crypto.createHash("sha256");
+            const msgHash = Uint8Array.from(hash.update(example_tx_wrongjson).digest());
+
+            const signatureDER = resp.signature;
+            const signature = secp256k1.signatureImport(Uint8Array.from(signatureDER));
+
+            const pk = Uint8Array.from(respPk.compressed_pk)
+
+            const signatureOk = secp256k1.ecdsaVerify(signature, msgHash, pk);
+            expect(signatureOk).toEqual(true);
+
+        } finally {
+            await sim.close();
+        }
+    });
+
+    it('sign basic false positive', async function () {
         const snapshotPrefixGolden = "snapshots/sign-basic/";
         const snapshotPrefixTmp = "snapshots-tmp/sign-basic/";
         let snapshotCount = 0;
